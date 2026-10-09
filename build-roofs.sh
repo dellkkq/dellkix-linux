@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ============================================================
-# DellkNet Linux - RootFS Builder
+# Dellkix - RootFS Builder
 # ============================================================
 
 ROOTFS="$(pwd)/rootfs"
@@ -16,7 +16,7 @@ if [[ -z "$BUSYBOX" ]]; then
     exit 1
 fi
 
-echo "==> DellkNet Linux RootFS Builder"
+echo "==> Dellkix RootFS Builder"
 echo
 
 # ------------------------------------------------------------
@@ -69,7 +69,7 @@ chmod 1777 "$ROOTFS/tmp"
 # BusyBox
 # ------------------------------------------------------------
 
-echo "==> Instalando BusyBox..."
+echo "==> Instalando BusyBox e bash..."
 
 # Copia o binário real, não um symlink amaldiçoado apontando
 # para algum diretório do sistema hospedeiro.
@@ -81,59 +81,34 @@ chmod +x "$ROOTFS/bin/busybox"
 # Applets
 # ------------------------------------------------------------
 
-echo "==> Criando applets BusyBox..."
+echo "==> Instalando todos os applets disponíveis..."
 
-APPLETS=(
-    sh
-    ash
-    mount
-    umount
-    ls
-    cat
-    echo
-    printf
-    clear
-    ps
-    grep
-    dmesg
-    uname
-    sleep
-    mkdir
-    rmdir
-    rm
-    cp
-    mv
-    ln
-    chmod
-    chown
-    pwd
-    cd
-    touch
-    date
-    hostname
-    kill
-    killall
-    sync
-    reboot
-    poweroff
-    halt
-    df
-    du
-    free
-    ip
-    ifconfig
-    route
-    ping
-    tar
-    gzip
-    cpio
-)
+BUSYBOX_BIN="$ROOTFS/bin/busybox"
 
-for applet in "${APPLETS[@]}"; do
-    if "$ROOTFS/bin/busybox" --list | grep -qx "$applet"; then
-        ln -sf busybox "$ROOTFS/bin/$applet"
-    fi
-done
+if [[ ! -x "$BUSYBOX_BIN" ]]; then
+    echo "ERRO: BusyBox não encontrado em $BUSYBOX_BIN"
+    exit 1
+fi
+
+# Cria um link para cada applet compilado no BusyBox.
+while IFS= read -r applet; do
+    [[ -n "$applet" ]] || continue
+
+    # Não substituir o próprio binário.
+    [[ "$applet" == "busybox" ]] && continue
+
+    ln -sf busybox "$ROOTFS/bin/$applet"
+done < <("$BUSYBOX_BIN" --list)
+
+# O shell é essencial para inicializar o sistema.
+if ! "$BUSYBOX_BIN" --list | grep -qx 'sh'; then
+    echo "ERRO: este BusyBox não possui o applet sh."
+    exit 1
+fi
+
+ln -sf busybox "$ROOTFS/bin/sh"
+
+echo "==> Applets instalados: $(find "$ROOTFS/bin" -type l | wc -l)"
 
 # ------------------------------------------------------------
 # /etc
@@ -142,15 +117,15 @@ done
 echo "==> Criando configuração básica..."
 
 cat >"$ROOTFS/etc/os-release" <<'EOF'
-NAME="DellkNet GNU/Linux"
+NAME="Dellkix GNU/Linux"
 VERSION="0.1 prototype"
-ID=dellknet_linux
+ID=dellkix
 VERSION_ID=0.1
-PRETTY_NAME="DellkNet Linux 0.1 (prototype)"
+PRETTY_NAME="Dellkix 0.1 (prototype)"
 EOF
 
 cat >"$ROOTFS/etc/hostname" <<'EOF'
-dellknet
+something
 EOF
 
 cat >"$ROOTFS/etc/passwd" <<'EOF'
@@ -171,7 +146,7 @@ cat >"$ROOTFS/init" <<'EOF'
 #!/bin/sh
 
 # ============================================================
-# DellkNet Linux - PID 1
+# Dellkix - PID 1
 # ============================================================
 
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin
@@ -185,7 +160,7 @@ clear 2>/dev/null
 
 echo
 echo "======================================"
-echo "       DellkNet Linux 0.1"
+echo "            Dellkix 0.1"
 echo "======================================"
 echo
 echo "Kernel : $(uname -r)"
